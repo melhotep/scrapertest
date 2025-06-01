@@ -1,4 +1,7 @@
-FROM apify/actor-python:3.11-playwright
+FROM apify/actor-python:3.11
+
+# Install Playwright
+RUN pip install playwright && python -m playwright install
 
 # Copy package files
 COPY requirements.txt ./
