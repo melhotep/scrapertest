@@ -1,0 +1,12 @@
+{
+  "actorSpecification": 1,
+  "name": "parsera-scraper",
+  "title": "Parsera Web Scraper",
+  "description": "Extract structured data from websites using LLMs without external API dependencies",
+  "version": "0.1",
+  "meta": {
+    "templateId": "python-playwright"
+  },
+  "input": "./input_schema.json",
+  "dockerfile": "./Dockerfile"
+}

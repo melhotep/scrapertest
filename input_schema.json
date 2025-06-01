@@ -1,0 +1,58 @@
+{
+  "title": "Parsera Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "url": {
+      "title": "URL",
+      "type": "string",
+      "description": "Website URL to scrape",
+      "editor": "textfield"
+    },
+    "elements": {
+      "title": "Elements to Extract",
+      "type": "object",
+      "description": "Key-value pairs where key is the field name and value is the description of what to extract",
+      "editor": "json"
+    },
+    "scrolls": {
+      "title": "Number of Scrolls",
+      "type": "integer",
+      "description": "Number of times to scroll the page (0 for no scrolling)",
+      "default": 0,
+      "minimum": 0,
+      "editor": "number"
+    },
+    "llmProvider": {
+      "title": "LLM Provider",
+      "type": "string",
+      "description": "LLM provider to use for extraction",
+      "default": "openai",
+      "enum": ["openai", "anthropic", "ollama", "local"],
+      "enumTitles": ["OpenAI", "Anthropic", "Ollama", "Local Model"],
+      "editor": "select"
+    },
+    "apiKey": {
+      "title": "API Key",
+      "type": "string",
+      "description": "API key for the selected LLM provider (not needed for local model)",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "modelName": {
+      "title": "Model Name",
+      "type": "string",
+      "description": "Name of the model to use",
+      "default": "gpt-4o-mini",
+      "editor": "textfield"
+    },
+    "proxyConfiguration": {
+      "title": "Proxy Configuration",
+      "type": "object",
+      "description": "Proxy settings for the actor",
+      "default": { "useApifyProxy": true },
+      "editor": "proxy"
+    }
+  },
+  "required": ["url", "elements"]
+}
