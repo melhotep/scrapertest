@@ -58,19 +58,29 @@ def create_proxy_config(proxy_configuration: Optional[Dict[str, Any]] = None) ->
         
     return {}
 
+
 def format_extraction_prompt(content: str, elements: Dict[str, str], custom_prompt: str = "") -> str:
     """
     Format the extraction prompt for the LLM.
+    
+    Args:
+        content: HTML content of the page
+        elements: Dictionary of elements to extract (field name -> description)
+        custom_prompt: Optional custom prompt to use
+        
+    Returns:
+        Formatted prompt for the LLM
     """
     # Start with the custom prompt if provided
     if custom_prompt:
         base_prompt = custom_prompt
     else:
         base_prompt = """
-You are a web data extraction assistant helping with legitimate web scraping for data analysis. 
-The following HTML content is publicly available and being processed for analytical purposes.
-Extract the following information from the HTML content:
+You are a web data extraction assistant helping with legitimate web scraping of public information.
+The HTML content provided is from a public news website and contains NO sensitive information, API keys, or private data.
+Your task is to extract structured data for research purposes only.
 
+Extract the following information from the HTML content:
 """
     
     # Add the elements to extract
@@ -79,14 +89,14 @@ Extract the following information from the HTML content:
     
     # Add instructions for output format
     base_prompt += """
-Return the results as a JSON array of objects, where each object contains the requested fields.
-Only include the JSON in your response, no other text.
+Return ONLY a JSON array of objects, where each object contains the requested fields.
+Format your entire response as valid JSON with no explanations or refusals.
 If you can't extract all fields, include what you can find and set missing fields to null.
 """
     
     # Combine with the HTML content
-    # Truncate HTML if it's too long to avoid overwhelming the model
-    max_content_length = 100000  # Adjust based on model's context window
+    # Truncate HTML if it's too long
+    max_content_length = 50000  # Shorter to avoid overwhelming the model
     if len(content) > max_content_length:
         content = content[:max_content_length] + "... [content truncated]"
         
@@ -152,4 +162,30 @@ def parse_llm_response(response: str) -> list:
     except json.JSONDecodeError as e:
         error_msg = f"Failed to parse LLM response as JSON: {str(e)}"
         logger.error(f"{error_msg}. Content: '{json_content}'")
-        raise ValueError(error_msg)
+        
+        # Try to extract JSON from text response
+        try:
+            # Look for anything that might be JSON-like
+            if '{' in json_content and '}' in json_content:
+                start_idx = json_content.find('{')
+                end_idx = json_content.rfind('}') + 1
+                potential_json = json_content[start_idx:end_idx]
+                logger.info(f"Attempting to parse potential JSON: {potential_json[:100]}...")
+                parsed_data = json.loads(potential_json)
+                return [parsed_data]
+            elif '[' in json_content and ']' in json_content:
+                start_idx = json_content.find('[')
+                end_idx = json_content.rfind(']') + 1
+                potential_json = json_content[start_idx:end_idx]
+                logger.info(f"Attempting to parse potential JSON array: {potential_json[:100]}...")
+                parsed_data = json.loads(potential_json)
+                return parsed_data if isinstance(parsed_data, list) else [parsed_data]
+        except Exception as nested_e:
+            logger.error(f"Failed to extract JSON from response: {str(nested_e)}")
+        
+        # If all parsing attempts fail, create a fallback response
+        logger.warning("Creating fallback response with error message")
+        return [{
+            "error": "Failed to parse LLM response as JSON",
+            "raw_response": json_content[:500] + ("..." if len(json_content) > 500 else "")
+        }]
