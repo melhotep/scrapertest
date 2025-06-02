@@ -3,6 +3,7 @@
 Parsera utils module - Utility functions for the Parsera actor
 """
 
+import json
 from typing import Dict, Any, Optional
 
 
