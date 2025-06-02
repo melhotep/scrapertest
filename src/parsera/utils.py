@@ -58,25 +58,18 @@ def create_proxy_config(proxy_configuration: Optional[Dict[str, Any]] = None) ->
         
     return {}
 
-
 def format_extraction_prompt(content: str, elements: Dict[str, str], custom_prompt: str = "") -> str:
     """
     Format the extraction prompt for the LLM.
-    
-    Args:
-        content: HTML content of the page
-        elements: Dictionary of elements to extract (field name -> description)
-        custom_prompt: Optional custom prompt to use
-        
-    Returns:
-        Formatted prompt for the LLM
     """
     # Start with the custom prompt if provided
     if custom_prompt:
         base_prompt = custom_prompt
     else:
         base_prompt = """
-You are a web scraping assistant. Extract the following information from the HTML content:
+You are a web data extraction assistant helping with legitimate web scraping for data analysis. 
+The following HTML content is publicly available and being processed for analytical purposes.
+Extract the following information from the HTML content:
 
 """
     
@@ -88,9 +81,15 @@ You are a web scraping assistant. Extract the following information from the HTM
     base_prompt += """
 Return the results as a JSON array of objects, where each object contains the requested fields.
 Only include the JSON in your response, no other text.
+If you can't extract all fields, include what you can find and set missing fields to null.
 """
     
     # Combine with the HTML content
+    # Truncate HTML if it's too long to avoid overwhelming the model
+    max_content_length = 100000  # Adjust based on model's context window
+    if len(content) > max_content_length:
+        content = content[:max_content_length] + "... [content truncated]"
+        
     full_prompt = f"{base_prompt}\n\nHTML Content:\n{content}"
     
     return full_prompt
