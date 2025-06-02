@@ -29,14 +29,17 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright
-RUN pip install playwright && python -m playwright install --with-deps chromium
-
 # Copy package files
 COPY requirements.txt ./
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright and download browsers
+# Use specific version to ensure compatibility
+RUN pip install playwright==1.44.0 && \
+    playwright install --with-deps chromium && \
+    chmod -R 777 /root/.cache/ms-playwright
 
 # Copy source code
 COPY . ./
