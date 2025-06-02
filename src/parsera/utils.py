@@ -4,8 +4,12 @@ Parsera utils module - Utility functions for the Parsera actor
 """
 
 import json
+import logging
 from typing import Dict, Any, Optional
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def create_proxy_config(proxy_configuration: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -102,16 +106,33 @@ def parse_llm_response(response: str) -> list:
     Returns:
         List of extracted items
     """
+    # Check for empty response
+    if not response or response.strip() == "":
+        logger.warning("Empty response received from LLM")
+        return []
+        
     # Clean up the response to extract only the JSON part
     cleaned_response = response.strip()
+    logger.info(f"Cleaned response length: {len(cleaned_response)}")
     
     # Find JSON content (between ```json and ``` if present)
     if "```json" in cleaned_response and "```" in cleaned_response.split("```json", 1)[1]:
         json_content = cleaned_response.split("```json", 1)[1].split("```", 1)[0].strip()
+        logger.info("Found JSON content between ```json markers")
     elif "```" in cleaned_response and "```" in cleaned_response.split("```", 1)[1]:
         json_content = cleaned_response.split("```", 1)[1].split("```", 1)[0].strip()
+        logger.info("Found JSON content between ``` markers")
     else:
         json_content = cleaned_response
+        logger.info("Using full response as JSON content")
+    
+    # Log the first 100 characters of the JSON content for debugging
+    if json_content:
+        preview = json_content[:min(100, len(json_content))]
+        logger.info(f"JSON content preview: {preview}...")
+    else:
+        logger.warning("JSON content is empty")
+        return []
     
     try:
         # Parse the JSON content
@@ -119,11 +140,17 @@ def parse_llm_response(response: str) -> list:
         
         # Ensure the result is a list
         if isinstance(parsed_data, dict):
+            logger.info("Parsed single object, converting to list")
             return [parsed_data]
         elif isinstance(parsed_data, list):
+            logger.info(f"Parsed list with {len(parsed_data)} items")
             return parsed_data
         else:
-            raise ValueError(f"Unexpected response format: {type(parsed_data)}")
+            error_msg = f"Unexpected response format: {type(parsed_data)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
             
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse LLM response as JSON: {str(e)}")
+        error_msg = f"Failed to parse LLM response as JSON: {str(e)}"
+        logger.error(f"{error_msg}. Content: '{json_content}'")
+        raise ValueError(error_msg)

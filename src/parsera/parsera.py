@@ -4,6 +4,7 @@ Parsera main module - Core extraction functionality
 """
 
 import asyncio
+import logging
 from typing import Dict, Any, Optional, Callable, Awaitable
 
 from langchain_core.language_models import BaseChatModel
@@ -13,6 +14,9 @@ from parsera.models import get_default_model
 from parsera.page import PageLoader
 from parsera.utils import format_extraction_prompt, parse_llm_response
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Parsera:
     """
@@ -68,33 +72,47 @@ class Parsera:
         Returns:
             List of extracted items
         """
-        # Initialize browser session if not already done
-        if self.loader.context is None:
-            await self.loader.create_session(
-                proxy_settings=proxy_settings,
-                playwright_script=self.initial_script,
-                stealth=self.stealth,
+        try:
+            # Initialize browser session if not already done
+            if self.loader.context is None:
+                logger.info("Creating browser session")
+                await self.loader.create_session(
+                    proxy_settings=proxy_settings,
+                    playwright_script=self.initial_script,
+                    stealth=self.stealth,
+                )
+                
+            # Fetch page content
+            logger.info(f"Fetching page content from {url}")
+            content = await self.loader.fetch_page(
+                url=url,
+                scrolls_limit=scrolls_limit,
+                playwright_script=playwright_script,
             )
             
-        # Fetch page content
-        content = await self.loader.fetch_page(
-            url=url,
-            scrolls_limit=scrolls_limit,
-            playwright_script=playwright_script,
-        )
-        
-        # Format extraction prompt
-        extraction_prompt = format_extraction_prompt(
-            content=content,
-            elements=elements or {},
-            custom_prompt=prompt,
-        )
-        
-        # Get LLM response
-        response = await self.model.ainvoke(extraction_prompt)
-        
-        # Parse and return results
-        return parse_llm_response(response.content)
+            # Format extraction prompt
+            logger.info("Formatting extraction prompt")
+            extraction_prompt = format_extraction_prompt(
+                content=content,
+                elements=elements or {},
+                custom_prompt=prompt,
+            )
+            
+            # Get LLM response
+            logger.info("Sending request to LLM")
+            try:
+                response = await self.model.ainvoke(extraction_prompt)
+                logger.info(f"Raw LLM response: {response.content}")
+            except Exception as e:
+                logger.error(f"LLM request failed: {str(e)}")
+                raise
+            
+            # Parse and return results
+            logger.info("Parsing LLM response")
+            return parse_llm_response(response.content)
+        except Exception as e:
+            logger.error(f"Extraction failed: {str(e)}")
+            raise
         
     def run(
         self,
